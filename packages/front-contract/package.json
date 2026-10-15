@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "sideEffects": false,
-  "exports": { ".": "./src/index.ts" },
-  "devDependencies": { "typescript": "^5.7.0" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
 }

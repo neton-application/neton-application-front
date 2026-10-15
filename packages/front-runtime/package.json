@@ -23,10 +23,10 @@
   },
   "devDependencies": {
     "@neton/application-front-contract": "workspace:*",
-    "@tanstack/react-query": "^5.0.0",
-    "@types/react": "^19.0.0",
-    "react": "^19.2.0",
-    "typescript": "^5.7.0"
+    "@tanstack/react-query": "^5.104.2",
+    "@types/react": "^19.3.0",
+    "react": "^19.3.0",
+    "typescript": "^7.0.2"
   },
   "scripts": {
     "test": "node --experimental-strip-types --test src/*.test.mts"
