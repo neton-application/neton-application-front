@@ -33,6 +33,8 @@ export interface ResourceField {
 
 export interface ResourcePageConfig {
   resourceKey: string;
+  /** 模块 id：后端返回的机器码先查该模块语言包里的 `error.<CODE>`（见 runtime useDescribeError）。 */
+  errorNamespace?: string;
   eyebrow: string;
   title: string;
   description: string;
@@ -77,7 +79,7 @@ function renderCell(field: ResourceField, row: ResourceRecord, t: Translate) {
 
 export function ResourcePage({ config }: { config: ResourcePageConfig }) {
   const t = useT("resource");
-  const describeError = useDescribeError();
+  const describeError = useDescribeError(config.errorNamespace);
   const queryClient = useQueryClient();
   const canCreate = usePermission(config.permissions.create);
   const canUpdate = usePermission(config.permissions.update);
