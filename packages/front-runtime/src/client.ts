@@ -43,9 +43,11 @@ export type ApiErrorKind =
   | "timeout"
   | "invalid_response";
 
+/** 后端错误信封里的字段级错误：`field` 是请求里的字段路径，`code` 是可翻译的机器码。 */
 export interface ApiFieldError {
   field?: string;
   message: string;
+  code?: string;
 }
 
 export class ApiError extends Error {

@@ -39,3 +39,29 @@ export function useDescribeError(namespace?: string): (error: unknown) => string
     return t("kind.business");
   }, []);
 }
+
+/**
+ * 把错误里的字段级错误变成「字段 → 给人看的话」，供表单逐项提示。
+ *
+ * 翻译顺序与 [useDescribeError] 相同：模块语言包 `error.<CODE>` → 通用 `errors.code.<CODE>` →
+ * 后端给的说明。没有字段路径的条目不在这里返回，由顶部的整体错误说明承担。
+ */
+export function useDescribeFieldErrors(namespace?: string): (error: unknown) => Record<string, string> {
+  const t = useT("errors");
+  const moduleT = useT(namespace ?? "errors");
+  const latest = React.useRef({ t, moduleT, scoped: namespace !== undefined });
+  latest.current = { t, moduleT, scoped: namespace !== undefined };
+  return React.useCallback((error: unknown) => {
+    const { t, moduleT, scoped } = latest.current;
+    if (!(error instanceof ApiError)) return {};
+    const result: Record<string, string> = {};
+    for (const item of error.details.fieldErrors ?? []) {
+      if (!item.field || result[item.field] !== undefined) continue;
+      const code = item.code;
+      result[item.field] = code && scoped && moduleT.has(`error.${code}`) ? moduleT(`error.${code}`)
+        : code && t.has(`code.${code}`) ? t(`code.${code}`)
+        : item.message;
+    }
+    return result;
+  }, []);
+}

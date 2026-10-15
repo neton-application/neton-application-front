@@ -5,7 +5,7 @@ import { apiFetch, apiWrite } from "@neton/application-front-runtime/client";
 import { useMutation, usePermission, useQuery, useQueryClient } from "@neton/application-front-runtime/client-context";
 import type { PageResponse } from "@neton/application-front-runtime/types";
 import { formatDateTime, formatMoney } from "@neton/application-front-runtime/types";
-import { useDescribeError } from "@neton/application-front-runtime/errors";
+import { useDescribeError, useDescribeFieldErrors } from "@neton/application-front-runtime/errors";
 import { useT, type Translate } from "@neton/application-front-runtime/i18n";
 import {
   Button, ConfirmDialog, DataTable, Drawer, Field, FilterPanel, Input, PageHeader,
@@ -80,6 +80,7 @@ function renderCell(field: ResourceField, row: ResourceRecord, t: Translate) {
 export function ResourcePage({ config }: { config: ResourcePageConfig }) {
   const t = useT("resource");
   const describeError = useDescribeError(config.errorNamespace);
+  const describeFieldErrors = useDescribeFieldErrors(config.errorNamespace);
   const queryClient = useQueryClient();
   const canCreate = usePermission(config.permissions.create);
   const canUpdate = usePermission(config.permissions.update);
@@ -94,6 +95,13 @@ export function ResourcePage({ config }: { config: ResourcePageConfig }) {
   const [viewing, setViewing] = React.useState<ResourceRecord | null>(null);
   const [detailLoading, setDetailLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({});
+  const openForm = (record: ResourceRecord) => { setError(null); setFieldErrors({}); setForm(record); };
+  const editField = (key: string, value: unknown) => {
+    if (!form) return;
+    setForm({ ...form, [key]: value });
+    if (fieldErrors[key]) setFieldErrors((prev) => { const next = { ...prev }; delete next[key]; return next; });
+  };
 
   const params = new URLSearchParams({ pageNo: String(page), pageSize: String(pageSize) });
   Object.entries(config.fixedFilters ?? {}).forEach(([key, value]) => value !== "" && params.set(key, value));
@@ -117,7 +125,7 @@ export function ResourcePage({ config }: { config: ResourcePageConfig }) {
       return apiWrite<void>(`/admin${config.endpoint}/${record.id ? "update" : "create"}`, record.id ? "PUT" : "POST", body);
     },
     onSuccess: async () => { setForm(null); await queryClient.invalidateQueries({ queryKey: [config.resourceKey] }); },
-    onError: (cause: Error) => setError(describeError(cause)),
+    onError: (cause: Error) => { setError(describeError(cause)); setFieldErrors(describeFieldErrors(cause)); },
   });
   const remove = useMutation({
     mutationFn: (record: ResourceRecord) => apiWrite<void>(`/admin${config.endpoint}/delete/${record.id}`, "DELETE"),
@@ -132,7 +140,7 @@ export function ResourcePage({ config }: { config: ResourcePageConfig }) {
       cell: (row: ResourceRecord) => <RowActions primary={[
         ...(config.rowActions?.(row).primary ?? []),
         ...(config.detailFields ? [{ label: t("view"), kind: "view" as const, onClick: async () => { setDetailLoading(true); setError(null); try { setViewing(await apiFetch<ResourceRecord>(`/admin${config.endpoint}/${config.detailPath?.(row) ?? `get/${row.id}`}`)); } catch (cause) { setError(describeError(cause)); setViewing(row); } finally { setDetailLoading(false); } } }] : []),
-        ...(!config.readOnly && canUpdate ? [{ label: t("edit"), kind: "edit" as const, tone: "primary" as const, onClick: () => { setError(null); setForm({ ...row }); } }] : []),
+        ...(!config.readOnly && canUpdate ? [{ label: t("edit"), kind: "edit" as const, tone: "primary" as const, onClick: () => openForm({ ...row }) }] : []),
       ]} more={[...(config.rowActions?.(row).more ?? []), ...(!config.readOnly && canDelete ? [{ label: t("delete"), kind: "delete" as const, danger: true, onClick: () => setDeleting(row) }] : [])]} />,
     } satisfies DataColumn<ResourceRecord>] : []),
   ];
@@ -141,15 +149,16 @@ export function ResourcePage({ config }: { config: ResourcePageConfig }) {
     event.preventDefault();
     if (!form) return;
     const missing = config.fields.find((field) => field.required && String(form[field.key] ?? "").trim() === "");
-    if (missing) { setError(t("required", { field: missing.label })); return; }
+    if (missing) { setError(t("required", { field: missing.label })); setFieldErrors({ [missing.key]: t("required", { field: missing.label }) }); return; }
     setError(null);
+    setFieldErrors({});
     save.mutate(form);
   }
 
   return <div className="space-y-4">
     <PageHeader eyebrow={config.eyebrow} title={config.title} description={config.description} actions={<>
       {config.headerActions}
-      {!config.readOnly && canCreate && <Button onClick={() => { setError(null); setForm(makeEmpty(config.fields)); }}>{t("create")}</Button>}
+      {!config.readOnly && canCreate && <Button onClick={() => openForm(makeEmpty(config.fields))}>{t("create")}</Button>}
       <Button variant="outline" onClick={() => query.refetch()} disabled={query.isFetching}>{t("refresh")}</Button>
     </>} />
     {filterFields.length > 0 && <FilterPanel onSubmit={(event) => { event.preventDefault(); setPage(1); setFilters({ ...draft }); }}>
@@ -168,10 +177,10 @@ export function ResourcePage({ config }: { config: ResourcePageConfig }) {
     <Drawer open={Boolean(form)} onClose={() => setForm(null)} title={t(form?.id ? "editTitle" : "createTitle", { title: config.title })} footer={<><Button variant="ghost" onClick={() => setForm(null)}>{t("cancel")}</Button><Button type="submit" form={`${config.resourceKey}-form`} disabled={save.isPending}>{t("save")}</Button></>}>
       {form && <form id={`${config.resourceKey}-form`} className="space-y-4" onSubmit={submit}>
         {error && <div className="rounded-lg bg-red-50 p-3 text-xs text-red-700">{error}</div>}
-        {config.fields.filter((field) => !field.filter && field.editable !== false && field.format !== "date" && field.key !== "id").map((field) => <Field key={field.key} label={field.label}>
-          {field.type === "select" ? <Select value={valueOf(form[field.key])} onChange={(event) => setForm({ ...form, [field.key]: Number.isNaN(Number(event.target.value)) ? event.target.value : Number(event.target.value) })}>{field.options?.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</Select>
-            : field.type === "textarea" ? <Textarea value={String(form[field.key] ?? "")} onChange={(event) => setForm({ ...form, [field.key]: event.target.value })} />
-            : <Input type={field.type === "number" ? "number" : "text"} value={valueOf(form[field.key])} placeholder={field.placeholder} onChange={(event) => setForm({ ...form, [field.key]: field.type === "number" ? Number(event.target.value) : event.target.value })} />}
+        {config.fields.filter((field) => !field.filter && field.editable !== false && field.format !== "date" && field.key !== "id").map((field) => <Field key={field.key} label={field.label} error={fieldErrors[field.key]}>
+          {field.type === "select" ? <Select value={valueOf(form[field.key])} onChange={(event) => editField(field.key, Number.isNaN(Number(event.target.value)) ? event.target.value : Number(event.target.value))}>{field.options?.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</Select>
+            : field.type === "textarea" ? <Textarea value={String(form[field.key] ?? "")} onChange={(event) => editField(field.key, event.target.value)} />
+            : <Input type={field.type === "number" ? "number" : "text"} value={valueOf(form[field.key])} placeholder={field.placeholder} onChange={(event) => editField(field.key, field.type === "number" ? Number(event.target.value) : event.target.value)} />}
         </Field>)}
       </form>}
     </Drawer>

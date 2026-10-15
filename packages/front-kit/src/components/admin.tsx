@@ -67,8 +67,9 @@ export function FilterPanel({ children, onSubmit }: { children: React.ReactNode;
   );
 }
 
-export function Field({ children, label }: { children: React.ReactNode; label: string }) {
-  return <label className="flex min-w-0 flex-col gap-1.5"><span className="block text-[11px] font-medium text-[var(--muted-foreground)]">{label}</span>{children}</label>;
+/** 表单项：[error] 是该字段的错误提示（已翻译），显示在输入控件下方。 */
+export function Field({ children, label, error }: { children: React.ReactNode; label: string; error?: string | null }) {
+  return <label className="flex min-w-0 flex-col gap-1.5"><span className="block text-[11px] font-medium text-[var(--muted-foreground)]">{label}</span>{children}{error && <span role="alert" className="block text-[11px] text-red-600">{error}</span>}</label>;
 }
 
 const EMPTY_SELECT_VALUE = "__neton_empty_select_value__";
