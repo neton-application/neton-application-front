@@ -7,18 +7,25 @@ import { useT } from "./i18n";
 /**
  * 把错误变成给人看的话（评审 R12/R15）。
  *
- * 优先级：后端机器码的翻译（`errors.code.*`）→ 错误类别的通用说明（`errors.kind.*`）。
+ * 优先级：模块自己的机器码翻译（模块语言包里的 `error.<CODE>`，传入模块命名空间时）→
+ * 通用机器码翻译（`errors.code.*`）→ 错误类别的通用说明（`errors.kind.*`）。
  * 后端返回的英文句子只在找不到任何翻译时才原样显示，并且永远不显示原始异常堆栈。
+ *
+ * 模块的错误码由模块自己翻译：每个模块在 `src/locales/<lang>.ts` 里写 `"error.<CODE>"`，
+ * 页面里调用 `useDescribeError("<模块 id>")`。共享运行时不需要认识任何模块的错误码。
  */
-export function useDescribeError(): (error: unknown) => string {
+export function useDescribeError(namespace?: string): (error: unknown) => string {
   const t = useT("errors");
+  // 未传命名空间时也必须无条件调用 hook（hook 调用顺序不能随参数变化）。
+  const moduleT = useT(namespace ?? "errors");
   // 引用保持稳定：调用方常把它放进 effect 依赖，词条陆续加载时不能因此重复请求。
-  const latest = React.useRef(t);
-  latest.current = t;
+  const latest = React.useRef({ t, moduleT, scoped: namespace !== undefined });
+  latest.current = { t, moduleT, scoped: namespace !== undefined };
   return React.useCallback((error: unknown) => {
-    const t = latest.current;
+    const { t, moduleT, scoped } = latest.current;
     if (error instanceof ApiError) {
       const code = error.machineCode;
+      if (code && scoped && moduleT.has(`error.${code}`)) return moduleT(`error.${code}`);
       if (code && t.has(`code.${code}`)) return t(`code.${code}`);
       if (error.kind === "rate_limited" && error.details.retryAfterSeconds !== undefined) {
         return t("kind.rate_limited_after", { seconds: error.details.retryAfterSeconds });
