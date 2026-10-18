@@ -13,7 +13,7 @@ import { ServiceStatus } from "@/components/service-status";
 
 export default function LoginPage() {
   const t = useT("shell");
-  const describeError = useDescribeError();
+  const describeError = useDescribeError("system");
   const [username, setUsername] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [passwordVisible, setPasswordVisible] = React.useState(false);

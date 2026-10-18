@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ApiError } from "./client";
-import { useT } from "./i18n";
+import { useT, type Translate } from "./i18n";
 
 /**
  * 把错误变成给人看的话（评审 R12/R15）。
@@ -31,13 +31,30 @@ export function useDescribeError(namespace?: string): (error: unknown) => string
         return t("kind.rate_limited_after", { seconds: error.details.retryAfterSeconds });
       }
       if (error.kind === "business" || error.kind === "validation") {
-        // 业务失败的具体原因只有后端知道；没有机器码时退回后端给的说明。
-        return error.details.fieldErrors?.map((f) => f.message).join("；") || error.message || t(`kind.${error.kind}`);
+        // 业务失败的具体原因只有后端知道；字段错误的 message 是机器码时同样按码翻译，否则退回后端给的说明。
+        const translate = (c: string | undefined) => translateCode(c, scoped ? moduleT : undefined, t);
+        return error.details.fieldErrors?.map((f) => translate(f.code) ?? translate(machineCodeOf(f.message)) ?? f.message).join("；")
+          || error.message || t(`kind.${error.kind}`);
       }
       return t(`kind.${error.kind}`);
     }
     return t("kind.business");
   }, []);
+}
+
+const MACHINE_CODE = /^[A-Z][A-Z0-9_]{2,}$/;
+
+function machineCodeOf(message: string | undefined): string | undefined {
+  return message && MACHINE_CODE.test(message) ? message : undefined;
+}
+
+
+/** 模块语言包 `error.<CODE>` → 通用 `errors.code.<CODE>`；都没有返回 undefined。 */
+function translateCode(code: string | undefined, moduleT: Translate | undefined, t: Translate): string | undefined {
+  if (!code) return undefined;
+  if (moduleT?.has(`error.${code}`)) return moduleT(`error.${code}`);
+  if (t.has(`code.${code}`)) return t(`code.${code}`);
+  return undefined;
 }
 
 /**
@@ -57,10 +74,9 @@ export function useDescribeFieldErrors(namespace?: string): (error: unknown) => 
     const result: Record<string, string> = {};
     for (const item of error.details.fieldErrors ?? []) {
       if (!item.field || result[item.field] !== undefined) continue;
-      const code = item.code;
-      result[item.field] = code && scoped && moduleT.has(`error.${code}`) ? moduleT(`error.${code}`)
-        : code && t.has(`code.${code}`) ? t(`code.${code}`)
-        : item.message;
+      // 先认 code；声明式校验（@Pattern 等）的 code 是约束名，机器码在 message 里。
+      const translate = (c: string | undefined) => translateCode(c, scoped ? moduleT : undefined, t);
+      result[item.field] = translate(item.code) ?? translate(machineCodeOf(item.message)) ?? item.message;
     }
     return result;
   }, []);
