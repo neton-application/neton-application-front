@@ -5,7 +5,8 @@
  * `errors` 的 key 两种：
  * - `kind.<ApiErrorKind>`：按错误类别的通用说明；
  * - `code.<MACHINE_CODE>`：后端返回的机器码（如 INVALID_CREDENTIALS）对应的人话。
- * 后端返回的英文异常句子不做匹配 —— 那不是契约，改一个字就失效。
+ * 框架内建码（字段的 REQUIRED/TOO_SHORT…、信封的 VALIDATION_FAILED/ROUTE_NOT_FOUND…，见 spec ERROR_CODE_SPEC）
+ * 在这里统一翻译；模块码由各模块语言包的 `error.<CODE>` 翻译。
  */
 import type { StaticCatalogs } from "./i18n";
 
@@ -100,6 +101,33 @@ export const runtimeCatalogs: StaticCatalogs = {
       "code.INVALID_EMAIL_CODE": "邮箱验证码错误或已过期。",
       "code.EMAIL_TAKEN": "该邮箱已被其他账号绑定。",
       "code.INVALID_EMAIL": "邮箱格式不正确。",
+      // 框架内建字段码（neton-core ValidationCode）；{min}/{max} 来自字段错误的 params
+      "code.REQUIRED": "必填项。",
+      "code.TOO_SHORT": "至少 {min} 个字符。",
+      "code.TOO_LONG": "最多 {max} 个字符。",
+      "code.TOO_FEW_ITEMS": "至少需要 {min} 项。",
+      "code.TOO_MANY_ITEMS": "最多 {max} 项。",
+      "code.TOO_SMALL": "不能小于 {min}。",
+      "code.TOO_LARGE": "不能大于 {max}。",
+      "code.INVALID_FORMAT": "格式不正确。",
+      "code.INVALID_JSON": "提交的数据格式有误。",
+      "code.INVALID_INTEGER": "请输入整数。",
+      "code.INVALID_NUMBER": "请输入数字。",
+      "code.INVALID_BOOLEAN": "取值无效。",
+      "code.INVALID_VALUE": "取值无效。",
+      // 框架内建信封码（neton-core NetonErrorMessage）
+      "code.VALIDATION_FAILED": "提交的内容有误，请检查后重试。",
+      "code.INVALID_PARAMS": "请求参数有误。",
+      "code.UNSUPPORTED_MEDIA_TYPE": "不支持的提交格式。",
+      "code.PAYLOAD_TOO_LARGE": "提交的内容太大。",
+      "code.REQUEST_TIMEOUT": "提交超时，请重试。",
+      "code.ROUTE_NOT_FOUND": "请求的接口不存在。",
+      "code.METHOD_NOT_ALLOWED": "不支持的请求方式。",
+      "code.RESOURCE_NOT_FOUND": "要找的内容不存在或已被删除。",
+      "code.LOCK_NOT_ACQUIRED": "操作正在处理中，请稍后再试。",
+      "code.INTERNAL_ERROR": "服务器出错了，请稍后再试。",
+      "code.SERVICE_UNAVAILABLE": "服务暂不可用，请稍后再试。",
+      "code.TIMEOUT": "服务器处理超时，请稍后再试。",
     },
     "en-US": {
       "kind.unauthorized": "Your session has expired. Please sign in again.",
@@ -122,6 +150,31 @@ export const runtimeCatalogs: StaticCatalogs = {
       "code.INVALID_EMAIL_CODE": "The email code is wrong or has expired.",
       "code.EMAIL_TAKEN": "This email is already linked to another account.",
       "code.INVALID_EMAIL": "The email address is invalid.",
+      "code.REQUIRED": "This field is required.",
+      "code.TOO_SHORT": "Must be at least {min, plural, one {# character} other {# characters}}.",
+      "code.TOO_LONG": "Must be at most {max, plural, one {# character} other {# characters}}.",
+      "code.TOO_FEW_ITEMS": "Needs at least {min, plural, one {# item} other {# items}}.",
+      "code.TOO_MANY_ITEMS": "At most {max, plural, one {# item} other {# items}}.",
+      "code.TOO_SMALL": "Must be at least {min}.",
+      "code.TOO_LARGE": "Must be at most {max}.",
+      "code.INVALID_FORMAT": "The format is invalid.",
+      "code.INVALID_JSON": "The submitted data is malformed.",
+      "code.INVALID_INTEGER": "Must be a whole number.",
+      "code.INVALID_NUMBER": "Must be a number.",
+      "code.INVALID_BOOLEAN": "Invalid value.",
+      "code.INVALID_VALUE": "Invalid value.",
+      "code.VALIDATION_FAILED": "Some of the information is invalid. Please check and try again.",
+      "code.INVALID_PARAMS": "The request parameters are invalid.",
+      "code.UNSUPPORTED_MEDIA_TYPE": "This submission format isn't supported.",
+      "code.PAYLOAD_TOO_LARGE": "The submission is too large.",
+      "code.REQUEST_TIMEOUT": "The submission timed out. Please try again.",
+      "code.ROUTE_NOT_FOUND": "The requested endpoint doesn't exist.",
+      "code.METHOD_NOT_ALLOWED": "This request method isn't supported.",
+      "code.RESOURCE_NOT_FOUND": "It doesn't exist or has been deleted.",
+      "code.LOCK_NOT_ACQUIRED": "This is already being processed. Please try again shortly.",
+      "code.INTERNAL_ERROR": "Something went wrong on the server. Please try again later.",
+      "code.SERVICE_UNAVAILABLE": "The service is temporarily unavailable. Please try again later.",
+      "code.TIMEOUT": "The server took too long to respond. Please try again later.",
     },
   },
 };
