@@ -5,6 +5,7 @@ import { ArrowRight, Check, Eye, EyeOff, Fingerprint, KeyRound, Moon, ShieldChec
 import { Alert, Button, Input, Label } from "@neton/application-front-kit";
 import { ApiError, login } from "@neton/application-front-runtime/client";
 import { useBrand } from "@neton/application-front-runtime/brand";
+import { useCaptcha, useCaptchaConfig } from "@neton/application-front-runtime/captcha";
 import { useDescribeError } from "@neton/application-front-runtime/errors";
 import { useT } from "@neton/application-front-runtime/i18n";
 import { BrandMark } from "@/components/brand-mark";
@@ -21,6 +22,7 @@ export default function LoginPage() {
   const [pending, setPending] = React.useState(false);
   const [darkMode, setDarkMode] = React.useState(false);
   const brand = useBrand(t("login.title"));
+  const captcha = useCaptcha(useCaptchaConfig(), "admin_login");
 
   React.useEffect(() => {
     setDarkMode(document.documentElement.classList.contains("dark"));
@@ -40,7 +42,7 @@ export default function LoginPage() {
     setError(null);
     try {
       // 直连后端：成功后会话 Cookie 由后端 Set-Cookie 下发，前端不接触 token。
-      const body = await login(username, password);
+      const body = await login(username, password, captcha.headers);
       if (body.code === 0) {
         if (body.data?.status === "mfa_required" || body.data?.status === "mfa_enrollment_required") {
           sessionStorage.setItem("neton-mfa-challenge", JSON.stringify(body.data));
@@ -53,9 +55,13 @@ export default function LoginPage() {
         return;
       }
       // 后端把「用户不存在 / 密码错误 / 已停用」统一成同一句，这里也只给一句（评审 R08）。
-      setError(body.code === 10300 || body.code === 429 ? describeError(new ApiError("rate_limited", body.message ?? "")) : t("login.failed"));
+      // 人机验证的失败要说清楚（让用户重新验证），不能混进「账号或密码错误」
+      if (body.message?.startsWith("CAPTCHA_")) setError(describeError(new ApiError("business", body.message)));
+      else setError(body.code === 10300 || body.code === 429 ? describeError(new ApiError("rate_limited", body.message ?? "")) : t("login.failed"));
+      captcha.reset();
     } catch (cause) {
       setError(describeError(cause instanceof ApiError ? cause : new ApiError("network", String(cause))));
+      captcha.reset();
     } finally {
       setPending(false);
     }
@@ -140,7 +146,8 @@ export default function LoginPage() {
                     </button>
                   </div>
                 </div>
-                <Button type="submit" className="group mt-2 h-11 w-full gap-2 text-sm" disabled={pending || !username || !password}>
+                {captcha.widget}
+                <Button type="submit" className="group mt-2 h-11 w-full gap-2 text-sm" disabled={pending || !username || !password || !captcha.ready}>
                   {pending ? t("login.submitting") : t("login.submit")}
                   {!pending && <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />}
                 </Button>

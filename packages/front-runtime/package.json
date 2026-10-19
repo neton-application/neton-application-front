@@ -15,7 +15,8 @@
     "./messages": "./src/messages.ts",
     "./brand": "./src/brand.ts",
     "./health": "./src/health.ts",
-    "./permission": "./src/permission.ts"
+    "./permission": "./src/permission.ts",
+    "./captcha": "./src/captcha.tsx"
   },
   "peerDependencies": {
     "@tanstack/react-query": "^5.0.0",

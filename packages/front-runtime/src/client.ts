@@ -266,8 +266,9 @@ export interface LoginResult {
   challengeExpiresAt?: number;
 }
 
-export async function login(username: string, password: string): Promise<Envelope<LoginResult>> {
-  const res = await send("/admin/system/auth/login", { method: "POST", body: JSON.stringify({ username, password }) });
+/** [headers] 用来带人机验证凭证（见 `captcha` 的 `useCaptcha`）。 */
+export async function login(username: string, password: string, headers?: Record<string, string>): Promise<Envelope<LoginResult>> {
+  const res = await send("/admin/system/auth/login", { method: "POST", headers, body: JSON.stringify({ username, password }) });
   return (await res.json()) as Envelope<LoginResult>;
 }
 

@@ -33,21 +33,27 @@ export function buildBrand(): Brand {
   };
 }
 
-let runtimeBrand: Promise<Partial<Brand>> | null = null;
+interface SitePublic { name?: string; tagline?: string; captcha?: unknown }
 
-/** 运行期覆盖只取一次；接口失败时静默退回构建期品牌，登录页不能因为它打不开。 */
-function loadRuntimeBrand(): Promise<Partial<Brand>> {
-  runtimeBrand ??= fetch(`${backendBaseUrl()}/admin/system/site/public`, { cache: "no-store" })
+let sitePublic: Promise<SitePublic> | null = null;
+
+/**
+ * 公开站点配置只取一次（品牌与人机验证共用）；接口失败时返回空对象，登录页不能因为它打不开。
+ */
+export function loadSitePublic(): Promise<SitePublic> {
+  sitePublic ??= fetch(`${backendBaseUrl()}/admin/system/site/public`, { cache: "no-store" })
     .then((res) => (res.ok ? res.json() : null))
-    .then((body: { code?: number; data?: { name?: string; tagline?: string } } | null) => {
-      const data = body?.code === 0 ? body.data : undefined;
-      return {
-        ...(data?.name?.trim() ? { name: data.name.trim() } : {}),
-        ...(data?.tagline !== undefined ? { tagline: data.tagline.trim() } : {}),
-      };
-    })
+    .then((body: { code?: number; data?: SitePublic } | null) => (body?.code === 0 && body.data ? body.data : {}))
     .catch(() => ({}));
-  return runtimeBrand;
+  return sitePublic;
+}
+
+/** 运行期品牌覆盖；接口失败时静默退回构建期品牌。 */
+function loadRuntimeBrand(): Promise<Partial<Brand>> {
+  return loadSitePublic().then((data) => ({
+    ...(data.name?.trim() ? { name: data.name.trim() } : {}),
+    ...(data.tagline !== undefined ? { tagline: data.tagline.trim() } : {}),
+  }));
 }
 
 /**
