@@ -55,19 +55,23 @@ export interface ApiFieldError {
   params?: Record<string, number>;
 }
 
+export interface ApiErrorDetails {
+  status?: number;
+  code?: number;
+  fieldErrors?: ApiFieldError[];
+  requestId?: string;
+  retryAfterSeconds?: number;
+}
+
 export class ApiError extends Error {
-  constructor(
-    readonly kind: ApiErrorKind,
-    message: string,
-    readonly details: {
-      status?: number;
-      code?: number;
-      fieldErrors?: ApiFieldError[];
-      requestId?: string;
-      retryAfterSeconds?: number;
-    } = {},
-  ) {
+  // 显式字段（不用构造参数属性）：node --experimental-strip-types 的单测能直接加载本文件。
+  readonly kind: ApiErrorKind;
+  readonly details: ApiErrorDetails;
+
+  constructor(kind: ApiErrorKind, message: string, details: ApiErrorDetails = {}) {
     super(message);
+    this.kind = kind;
+    this.details = details;
     this.name = "ApiError";
   }
 
@@ -206,6 +210,30 @@ export function apiWrite<T>(
     method,
     body: data === undefined ? undefined : data instanceof FormData ? data : JSON.stringify(data),
   });
+}
+
+/** 写请求的结果连同 HTTP 状态：`accepted` = 后端回 202（只把工作排进了后台，body 是当前状态），否则是请求里已经做完。 */
+export interface ApiWriteResult<T> {
+  data: T;
+  status: number;
+  accepted: boolean;
+}
+
+/**
+ * 同 [apiWrite]，但保留成功响应的 HTTP 状态：异步受理的接口（如「排队合成」）回 202 Accepted，同步完成回 200，
+ * 两者 body 都是标准信封（code = 0）。错误与 [apiFetch] 完全一样抛 [ApiError]。写请求不重试。
+ */
+export async function apiWriteResult<T>(
+  path: string,
+  method: "POST" | "PUT" | "PATCH" | "DELETE",
+  data?: unknown,
+): Promise<ApiWriteResult<T>> {
+  const res = await send(path, {
+    method,
+    body: data === undefined ? undefined : data instanceof FormData ? data : JSON.stringify(data),
+  });
+  const value = await parse<T>(res);
+  return { data: value, status: res.status, accepted: res.status === 202 };
 }
 
 export type SessionResult =
