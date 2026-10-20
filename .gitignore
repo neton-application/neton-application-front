@@ -6,3 +6,4 @@ dist/
 apps/shell/src/generated/
 .env*.local
 .DS_Store
+.playwright-cli/
