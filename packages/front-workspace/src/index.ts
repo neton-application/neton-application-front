@@ -14,6 +14,7 @@ export {
   type WorkspaceNavigation,
 } from "./context";
 export { buildWorkspacePages, type PageLoaderRegistry, type WorkspaceModuleManifest } from "./pages";
-export { WorkspaceHost, WorkspaceLabelsProvider, useCloseGuard, defaultWorkspaceLabels, type WorkspaceUiAdapter, type WorkspaceLabels } from "./host";
+export { WorkspaceHost, WorkspaceLabelsProvider, useCloseGuard, defaultWorkspaceLabels, type WorkspaceUiAdapter, type WorkspaceKitNavigation, type WorkspaceLabels } from "./host";
 export { WorkspaceLink, useWorkspaceLinkDelegation, type WorkspaceLinkProps } from "./link";
-export { createBrowserHistoryHost } from "./host-history";
+export { createBrowserHistoryHost, type BrowserHistoryHostOptions } from "./host-history";
+export { normalizeBasePath, withBasePath, stripBasePath } from "./base-path";

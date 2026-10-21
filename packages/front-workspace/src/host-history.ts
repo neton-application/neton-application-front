@@ -1,3 +1,4 @@
+import { normalizeBasePath, stripBasePath, withBasePath } from "./base-path";
 import type { WorkspaceHostAdapter } from "./types";
 
 /** 我们在 history.state 上的命名空间。绝不整体覆盖 state —— 宿主的内部字段也在里面。 */
@@ -28,29 +29,47 @@ function readNs(state: unknown): WorkspaceHistoryState | null {
  *
  * 我们只读写自己命名空间下的字段，不读也不写宿主的内部字段。
  */
-export function createBrowserHistoryHost(): WorkspaceHostAdapter {
+export interface BrowserHistoryHostOptions {
+  /**
+   * 工作区挂载的路径前缀（如 `/my`）；省略或空串 = 根路径。见 base-path.ts：工作区内部的地址
+   * 不带前缀，只有写进地址栏与 `<a href>` 时才加。
+   */
+  basePath?: string;
+}
+
+export function createBrowserHistoryHost(options: BrowserHistoryHostOptions = {}): WorkspaceHostAdapter {
+  const basePath = normalizeBasePath(options.basePath);
+  const current = () => `${window.location.pathname}${window.location.search}${window.location.hash}`;
   return {
     read() {
-      return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      // 工作区只挂在前缀下；万一在前缀外启动，按首页处理（store 会把地址栏改回前缀首页）
+      return stripBasePath(basePath, current()) ?? "/";
     },
     readInstanceId() {
       return readNs(window.history.state)?.instanceId ?? null;
     },
     push(href, instanceId) {
       const prev = (window.history.state ?? {}) as Record<string, unknown>;
-      window.history.pushState({ ...prev, [NS]: { instanceId } }, "", href);
+      window.history.pushState({ ...prev, [NS]: { instanceId } }, "", withBasePath(basePath, href));
     },
     replace(href, instanceId) {
       const prev = (window.history.state ?? {}) as Record<string, unknown>;
-      window.history.replaceState({ ...prev, [NS]: { instanceId } }, "", href);
+      window.history.replaceState({ ...prev, [NS]: { instanceId } }, "", withBasePath(basePath, href));
     },
     subscribe(listener) {
       const onPop = () => {
-        const href = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-        listener(href, readNs(window.history.state)?.instanceId ?? null);
+        // 后退到前缀外（门户页面）由宿主路由处理，工作区不接
+        const href = stripBasePath(basePath, current());
+        if (href !== null) listener(href, readNs(window.history.state)?.instanceId ?? null);
       };
       window.addEventListener("popstate", onPop);
       return () => window.removeEventListener("popstate", onPop);
+    },
+    toExternal(href) {
+      return withBasePath(basePath, href);
+    },
+    toInternal(href) {
+      return stripBasePath(basePath, href);
     },
   };
 }

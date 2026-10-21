@@ -62,6 +62,16 @@ export class WorkspaceStore {
 
   getSnapshot = (): WorkspaceSnapshot => this.snapshot;
 
+  /** 工作区地址 → 浏览器地址（`<a href>` 必须用它，宿主可能挂在路径前缀下）。 */
+  hrefOf(href: string): string {
+    return this.options.host.toExternal(href);
+  }
+
+  /** 浏览器里的同源相对地址 → 工作区地址；在宿主前缀外返回 null。 */
+  internalHrefOf(href: string): string | null {
+    return this.options.host.toInternal(href);
+  }
+
   /**
    * 换一份页面表（例如切换语言后页面的默认标题变了）。已打开的实例**原样保留**，
    * 只按新页面表重算各自的默认标题；页面发布的标题不受影响。

@@ -74,7 +74,7 @@ export interface ResolvedRoute {
  * 换宿主（Vite / hash 路由 / 桌面壳）只需另写一个实现。
  */
 export interface WorkspaceHostAdapter {
-  /** 读取当前地址（相对 href）。 */
+  /** 读取当前地址（工作区地址：相对 href，不带宿主的路径前缀）。 */
   read(): string;
   /** 读取当前历史条目上绑定的 instanceId。 */
   readInstanceId(): string | null;
@@ -84,4 +84,11 @@ export interface WorkspaceHostAdapter {
   replace(href: string, instanceId: string): void;
   /** 订阅浏览器前进后退。 */
   subscribe(listener: (href: string, instanceId: string | null) => void): () => void;
+  /**
+   * 工作区地址 → 浏览器地址（`<a href>` 用）。宿主挂在路径前缀下时加前缀，否则原样返回。
+   * 工作区内部的地址（manifest path、页签 location、持久化）一律不带前缀。
+   */
+  toExternal(href: string): string;
+  /** 浏览器里的同源相对地址 → 工作区地址；不归工作区管（在前缀外）返回 null。 */
+  toInternal(href: string): string | null;
 }

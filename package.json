@@ -7,7 +7,7 @@
     "typecheck": "pnpm registry && pnpm check:locales && pnpm --filter @neton/application-front-shell typecheck",
     "registry": "tsx scripts/generate-registry.mts",
     "check:locales": "tsx scripts/check-locales.mts",
-    "test": "pnpm --filter @neton/application-front-runtime test"
+    "test": "pnpm --filter @neton/application-front-runtime --filter @neton/application-front-workspace test"
   },
   "devDependencies": {
     "tsx": "^4.23.15",

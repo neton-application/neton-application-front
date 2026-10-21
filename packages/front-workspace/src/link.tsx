@@ -12,17 +12,17 @@ export interface WorkspaceLinkProps extends Omit<React.AnchorHTMLAttributes<HTML
 }
 
 /**
- * 工作区内导航的正式出口。
+ * 工作区内导航的正式出口。`to` 是工作区地址（与 manifest path 同一套，不带宿主前缀）。
  *
- * 仍然渲染真正的 `<a href>` —— 中键、Ctrl/Cmd 点击、右键「在新标签页打开」、
- * 复制链接地址都必须照常工作；只有普通左键点击才被接管。
+ * 仍然渲染真正的 `<a href>`（宿主挂在前缀下时自动加前缀）—— 中键、Ctrl/Cmd 点击、
+ * 右键「在新标签页打开」、复制链接地址都必须照常工作；只有普通左键点击才被接管。
  */
 export function WorkspaceLink({ to, newInstance, onClick, ...rest }: WorkspaceLinkProps) {
   const store = useWorkspaceStore();
   return (
     <a
       {...rest}
-      href={to}
+      href={store.hrefOf(to)}
       onClick={(event) => {
         onClick?.(event);
         if (event.defaultPrevented) return;
@@ -57,8 +57,9 @@ export function useWorkspaceLinkDelegation(pages: WorkspacePage[]): void {
       if (!href || href.startsWith("#") || /^[a-z]+:/i.test(href)) return;
       const url = new URL(href, window.location.origin);
       if (url.origin !== window.location.origin) return;
-      const relative = `${url.pathname}${url.search}${url.hash}`;
-      if (!resolveRoute(pages, relative)) return;
+      // 原生链接写的是浏览器地址：先去掉宿主前缀；不在前缀下的（门户页面）交给浏览器
+      const relative = store.internalHrefOf(`${url.pathname}${url.search}${url.hash}`);
+      if (relative === null || !resolveRoute(pages, relative)) return;
       event.preventDefault();
       store.open(relative);
     };

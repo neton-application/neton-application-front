@@ -17,8 +17,16 @@ import type { WorkspaceInstance, WorkspacePage } from "./types";
 export interface WorkspaceUiAdapter {
   /** 把「弹层容器解析函数」提供给 UI 套件。 */
   PortalHostProvider: React.ComponentType<{ container: () => Element | null; children: React.ReactNode }>;
-  /** 把「打开站内地址」提供给 UI 套件（列表行的详情按钮等）。 */
-  NavigationProvider: React.ComponentType<{ navigation: { open(href: string): void }; children: React.ReactNode }>;
+  /**
+   * 把「打开站内地址」提供给 UI 套件（列表行的详情按钮等）。`open` 收工作区地址；
+   * `hrefOf` 把工作区地址换成浏览器地址，供 kit 渲染 `<a href>`（宿主可能挂在路径前缀下）。
+   */
+  NavigationProvider: React.ComponentType<{ navigation: WorkspaceKitNavigation; children: React.ReactNode }>;
+}
+
+export interface WorkspaceKitNavigation {
+  open(href: string): void;
+  hrefOf(href: string): string;
 }
 
 /*
@@ -213,7 +221,10 @@ export function WorkspaceHost({ pages, ui }: { pages: WorkspacePage[]; ui: Works
   const pageMap = React.useMemo(() => new Map(pages.map((p) => [p.key, p])), [pages]);
   // front-kit 里的 RowActions / KitLink 通过这个适配器走工作区导航，
   // 不再整页跳转（它们是列表页「详情」按钮的实际出口）。
-  const kitNavigation = React.useMemo(() => ({ open: (href: string) => { store.open(href); } }), [store]);
+  const kitNavigation = React.useMemo<WorkspaceKitNavigation>(() => ({
+    open: (href) => { store.open(href); },
+    hrefOf: (href) => store.hrefOf(href),
+  }), [store]);
 
   return (
     <NavigationProvider navigation={kitNavigation}>
