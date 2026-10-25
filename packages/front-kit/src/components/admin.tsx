@@ -304,7 +304,10 @@ function inferActionIcon(action: RowAction): FrontIcon | undefined {
   return undefined;
 }
 
-export function RowActions({ primary, more = [] }: { primary: RowAction[]; more?: RowAction[] }) {
+/** 行内最多直接摆两个主操作；多出来的排到「更多」菜单最前面，不丢。 */
+export function RowActions({ primary: allPrimary, more: extra = [] }: { primary: RowAction[]; more?: RowAction[] }) {
+  const primary = allPrimary.slice(0, 2);
+  const more = [...allPrimary.slice(2), ...extra];
   const labels = useKitLabels();
   function actionNode(action: RowAction, compact = false) {
     const tone = action.danger ? "danger" : action.tone ?? "neutral";
@@ -324,7 +327,7 @@ export function RowActions({ primary, more = [] }: { primary: RowAction[]; more?
     return action.href ? <KitLink key={action.label} href={action.href} className={className}>{content}</KitLink> : <button key={action.label} type="button" className={className} disabled={action.disabled} onClick={invoke}>{content}</button>;
   }
   return <div className="flex justify-end gap-1">
-    {primary.slice(0, 2).map((action) => actionNode(action, true))}
+    {primary.map((action) => actionNode(action, true))}
     {more.length > 0 && <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button type="button" aria-label={labels.moreActions} title={labels.moreActions} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)] shadow-[var(--shadow-xs)] outline-none transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)] focus-visible:border-[var(--ring)] focus-visible:ring-[3px] focus-visible:ring-[var(--ring)]/20 dark:bg-[var(--input)]/20">

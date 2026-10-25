@@ -28,7 +28,15 @@ export interface ResourceField {
   table?: boolean;
   /** 默认可编辑；date 格式和 id 默认只读。 */
   editable?: boolean;
+  /** 只在新建表单里出现、校验和提交（如只能在创建时给出的初始密钥）；编辑时整项不出现。 */
+  createOnly?: boolean;
   format?: "status" | "date" | "money" | "mono";
+}
+
+/** 表单里出现的字段：可编辑的非筛选字段；createOnly 字段只在新建（record 没有 id）时出现。 */
+function formFields(fields: ResourceField[], record: Record<string, unknown>): ResourceField[] {
+  return fields.filter((field) => !field.filter && field.editable !== false && field.format !== "date" && field.key !== "id"
+    && !(field.createOnly && record.id));
 }
 
 export interface ResourcePageConfig {
@@ -116,7 +124,7 @@ export function ResourcePage({ config }: { config: ResourcePageConfig }) {
 
   const save = useMutation({
     mutationFn: (record: ResourceRecord) => {
-      const editable = config.fields.filter((field) => !field.filter && field.editable !== false && field.format !== "date" && field.key !== "id");
+      const editable = formFields(config.fields, record);
       const safeRecord = Object.fromEntries([
         ...(record.id ? [["id", record.id]] : []),
         ...editable.map((field) => [field.key, record[field.key]]),
@@ -148,7 +156,7 @@ export function ResourcePage({ config }: { config: ResourcePageConfig }) {
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!form) return;
-    const missing = config.fields.find((field) => field.required && String(form[field.key] ?? "").trim() === "");
+    const missing = formFields(config.fields, form).find((field) => field.required && String(form[field.key] ?? "").trim() === "");
     if (missing) { setError(t("required", { field: missing.label })); setFieldErrors({ [missing.key]: t("required", { field: missing.label }) }); return; }
     setError(null);
     setFieldErrors({});
@@ -177,9 +185,9 @@ export function ResourcePage({ config }: { config: ResourcePageConfig }) {
     <Drawer open={Boolean(form)} onClose={() => setForm(null)} title={t(form?.id ? "editTitle" : "createTitle", { title: config.title })} footer={<><Button variant="ghost" onClick={() => setForm(null)}>{t("cancel")}</Button><Button type="submit" form={`${config.resourceKey}-form`} disabled={save.isPending}>{t("save")}</Button></>}>
       {form && <form id={`${config.resourceKey}-form`} className="space-y-4" onSubmit={submit}>
         {error && <div className="rounded-lg bg-red-50 p-3 text-xs text-red-700">{error}</div>}
-        {config.fields.filter((field) => !field.filter && field.editable !== false && field.format !== "date" && field.key !== "id").map((field) => <Field key={field.key} label={field.label} error={fieldErrors[field.key]}>
+        {formFields(config.fields, form).map((field) => <Field key={field.key} label={field.label} error={fieldErrors[field.key]}>
           {field.type === "select" ? <Select value={valueOf(form[field.key])} onChange={(event) => editField(field.key, Number.isNaN(Number(event.target.value)) ? event.target.value : Number(event.target.value))}>{field.options?.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</Select>
-            : field.type === "textarea" ? <Textarea value={String(form[field.key] ?? "")} onChange={(event) => editField(field.key, event.target.value)} />
+            : field.type === "textarea" ? <Textarea value={String(form[field.key] ?? "")} placeholder={field.placeholder} onChange={(event) => editField(field.key, event.target.value)} />
             : <Input type={field.type === "number" ? "number" : "text"} value={valueOf(form[field.key])} placeholder={field.placeholder} onChange={(event) => editField(field.key, field.type === "number" ? Number(event.target.value) : event.target.value)} />}
         </Field>)}
       </form>}
