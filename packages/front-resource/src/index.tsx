@@ -77,7 +77,12 @@ function makeEmpty(fields: ResourceField[]): ResourceRecord {
 
 function renderCell(field: ResourceField, row: ResourceRecord, t: Translate) {
   const value = row[field.key];
-  if (field.format === "status") return <StatusBadge active={Number(value) === 1}>{Number(value) === 1 ? t("enabled") : t("disabled")}</StatusBadge>;
+  if (field.format === "status") {
+    // 字段自己声明了选项（如「可达 / 不可达」「启用 / 停用 / 暂停」）就用选项文案，否则退回通用的启用 / 停用
+    const option = field.options?.find((o) => String(o.value) === String(value));
+    if (value === null || value === undefined || value === "") return <span className="text-[var(--muted-foreground)]">-</span>;
+    return <StatusBadge active={Number(value) === 1}>{option ? option.label : Number(value) === 1 ? t("enabled") : t("disabled")}</StatusBadge>;
+  }
   if (field.format === "date") return formatDateTime(value as string | number | null);
   // 金额是最小货币单位（分）；记录上带了币种字段就用它，否则用部署默认币种。
   if (field.format === "money") return <span className="tabular-nums">{formatMoney(value as number, typeof row.currency === "string" ? row.currency : undefined)}</span>;

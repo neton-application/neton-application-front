@@ -312,25 +312,27 @@ export function RowActions({ primary: allPrimary, more: extra = [] }: { primary:
   function actionNode(action: RowAction, compact = false) {
     const tone = action.danger ? "danger" : action.tone ?? "neutral";
     const Icon = inferActionIcon(action);
+    // 行内按钮按 shadcn 表格的惯例用 ghost 风格：平时无边框无底色、悬停才出底色，一行里不出现实心大按钮；
+    // tone 只体现在文字颜色上（primary 更醒目、danger 红、positive 绿）。不折行。
     const className = cn(
       compact
-        ? "inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-medium shadow-[var(--shadow-xs)] transition"
+        ? "inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-xs font-medium outline-none transition-colors hover:bg-[var(--muted)] focus-visible:ring-[3px] focus-visible:ring-[var(--ring)]/30"
         : "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-medium transition hover:bg-[var(--muted)]",
-      tone === "danger" && (compact ? "border-red-600 bg-red-600 text-white hover:border-red-700 hover:bg-red-700" : "text-red-600"),
-      tone === "primary" && (compact ? "border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)] hover:opacity-90" : "text-[var(--foreground)]"),
-      tone === "positive" && (compact ? "border-emerald-600 bg-emerald-600 text-white hover:border-emerald-700 hover:bg-emerald-700 dark:border-emerald-500 dark:bg-emerald-600 dark:hover:bg-emerald-500" : "text-emerald-700 dark:text-emerald-400"),
-      tone === "neutral" && (compact ? "border-[var(--border)] bg-[var(--card)] text-[var(--body-foreground)] hover:border-[var(--input)] hover:bg-[var(--muted)]" : "text-[var(--body-foreground)]"),
+      tone === "danger" && "text-red-600 dark:text-red-400",
+      tone === "primary" && "text-[var(--foreground)]",
+      tone === "positive" && "text-emerald-700 dark:text-emerald-400",
+      tone === "neutral" && (compact ? "text-[var(--muted-foreground)] hover:text-[var(--foreground)]" : "text-[var(--body-foreground)]"),
       action.disabled && "pointer-events-none opacity-50",
     );
     const invoke = () => action.onClick?.();
     const content = <>{Icon && <Icon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" strokeWidth={1.9} />}<span>{action.label}</span></>;
     return action.href ? <KitLink key={action.label} href={action.href} className={className}>{content}</KitLink> : <button key={action.label} type="button" className={className} disabled={action.disabled} onClick={invoke}>{content}</button>;
   }
-  return <div className="flex justify-end gap-1">
+  return <div className="flex items-center justify-end gap-0.5 whitespace-nowrap">
     {primary.map((action) => actionNode(action, true))}
     {more.length > 0 && <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button type="button" aria-label={labels.moreActions} title={labels.moreActions} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)] shadow-[var(--shadow-xs)] outline-none transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)] focus-visible:border-[var(--ring)] focus-visible:ring-[3px] focus-visible:ring-[var(--ring)]/20 dark:bg-[var(--input)]/20">
+        <button type="button" aria-label={labels.moreActions} title={labels.moreActions} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--muted-foreground)] outline-none transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)] focus-visible:ring-[3px] focus-visible:ring-[var(--ring)]/30 data-[state=open]:bg-[var(--muted)] data-[state=open]:text-[var(--foreground)]">
           <MoreHorizontalIcon aria-hidden="true" className="h-4 w-4" strokeWidth={1.9} />
         </button>
       </DropdownMenuTrigger>
@@ -356,8 +358,9 @@ export function RowActions({ primary: allPrimary, more: extra = [] }: { primary:
 export function StatusBadge({ active, children }: { active: boolean; children: React.ReactNode }) {
   return (
     <span className={cn(
-      "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold",
-      active ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border border-[var(--border)] bg-[var(--muted)] text-[var(--muted-foreground)]",
+      // shadcn Badge 的比例：rounded-md、px-2 py-0.5、text-xs font-medium，且永不折行
+      "inline-flex w-fit shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium",
+      active ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border-[var(--border)] bg-[var(--muted)] text-[var(--muted-foreground)]",
     )}>
       <span className={cn("h-1.5 w-1.5 rounded-full", active ? "bg-emerald-500" : "bg-[var(--muted-foreground)]")} />
       {children}
