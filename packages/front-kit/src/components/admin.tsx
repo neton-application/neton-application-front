@@ -67,9 +67,17 @@ export function FilterPanel({ children, onSubmit }: { children: React.ReactNode;
   );
 }
 
-/** 表单项：[error] 是该字段的错误提示（已翻译），显示在输入控件下方。 */
-export function Field({ children, label, error }: { children: React.ReactNode; label: string; error?: string | null }) {
-  return <label className="flex min-w-0 flex-col gap-1.5"><span className="block text-[11px] font-medium text-[var(--muted-foreground)]">{label}</span>{children}{error && <span role="alert" className="block text-[11px] text-red-600">{error}</span>}</label>;
+/**
+ * 表单项：[hint] 是这一项的用途说明，显示在输入控件下方；[required] 在标签后加红色星号；
+ * [error] 是该字段的错误提示（已翻译），显示在最下方。
+ */
+export function Field({ children, label, hint, required, error }: { children: React.ReactNode; label: string; hint?: React.ReactNode; required?: boolean; error?: string | null }) {
+  return <label className="flex min-w-0 flex-col gap-1.5">
+    <span className="block text-[11px] font-medium text-[var(--muted-foreground)]">{label}{required && <span aria-hidden className="ml-0.5 text-red-600">*</span>}</span>
+    {children}
+    {hint && <span className="block text-[11px] leading-relaxed text-[var(--muted-foreground)]">{hint}</span>}
+    {error && <span role="alert" className="block text-[11px] text-red-600">{error}</span>}
+  </label>;
 }
 
 const EMPTY_SELECT_VALUE = "__neton_empty_select_value__";

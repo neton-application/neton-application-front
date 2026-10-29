@@ -21,7 +21,12 @@ export interface ResourceField {
   label: string;
   type?: ResourceFieldType;
   placeholder?: string;
-  required?: boolean;
+  /** 必填；可按当前表单内容决定（如某选项选中后才必填）。 */
+  required?: boolean | ((record: Record<string, unknown>) => boolean);
+  /** 表单里显示在标签下方的说明：这一项是干什么的、怎么填。 */
+  hint?: string;
+  /** 按当前表单内容决定是否显示；隐藏时不校验必填，但值照常提交。 */
+  showWhen?: (record: Record<string, unknown>) => boolean;
   options?: ResourceOption[];
   defaultValue?: string | number;
   filter?: boolean;
@@ -37,6 +42,15 @@ export interface ResourceField {
 function formFields(fields: ResourceField[], record: Record<string, unknown>): ResourceField[] {
   return fields.filter((field) => !field.filter && field.editable !== false && field.format !== "date" && field.key !== "id"
     && !(field.createOnly && record.id));
+}
+
+function isRequired(field: ResourceField, record: Record<string, unknown>): boolean {
+  return typeof field.required === "function" ? field.required(record) : Boolean(field.required);
+}
+
+/** 表单里当前看得见的字段（showWhen 为假的不显示、不校验）。 */
+function visibleFields(fields: ResourceField[], record: Record<string, unknown>): ResourceField[] {
+  return formFields(fields, record).filter((field) => !field.showWhen || field.showWhen(record));
 }
 
 export interface ResourcePageConfig {
@@ -161,7 +175,7 @@ export function ResourcePage({ config }: { config: ResourcePageConfig }) {
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!form) return;
-    const missing = formFields(config.fields, form).find((field) => field.required && String(form[field.key] ?? "").trim() === "");
+    const missing = visibleFields(config.fields, form).find((field) => isRequired(field, form) && String(form[field.key] ?? "").trim() === "");
     if (missing) { setError(t("required", { field: missing.label })); setFieldErrors({ [missing.key]: t("required", { field: missing.label }) }); return; }
     setError(null);
     setFieldErrors({});
@@ -190,8 +204,8 @@ export function ResourcePage({ config }: { config: ResourcePageConfig }) {
     <Drawer open={Boolean(form)} onClose={() => setForm(null)} title={t(form?.id ? "editTitle" : "createTitle", { title: config.title })} footer={<><Button variant="ghost" onClick={() => setForm(null)}>{t("cancel")}</Button><Button type="submit" form={`${config.resourceKey}-form`} disabled={save.isPending}>{t("save")}</Button></>}>
       {form && <form id={`${config.resourceKey}-form`} className="space-y-4" onSubmit={submit}>
         {error && <div className="rounded-lg bg-red-50 p-3 text-xs text-red-700">{error}</div>}
-        {formFields(config.fields, form).map((field) => <Field key={field.key} label={field.label} error={fieldErrors[field.key]}>
-          {field.type === "select" ? <Select value={valueOf(form[field.key])} onChange={(event) => editField(field.key, Number.isNaN(Number(event.target.value)) ? event.target.value : Number(event.target.value))}>{field.options?.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</Select>
+        {visibleFields(config.fields, form).map((field) => <Field key={field.key} label={field.label} hint={field.hint} required={isRequired(field, form)} error={fieldErrors[field.key]}>
+          {field.type === "select" ? <Select value={valueOf(form[field.key])} onChange={(event) => { const value = event.target.value; editField(field.key, value === "" || Number.isNaN(Number(value)) ? value : Number(value)); }}>{field.options?.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</Select>
             : field.type === "textarea" ? <Textarea value={String(form[field.key] ?? "")} placeholder={field.placeholder} onChange={(event) => editField(field.key, event.target.value)} />
             : <Input type={field.type === "number" ? "number" : "text"} value={valueOf(form[field.key])} placeholder={field.placeholder} onChange={(event) => editField(field.key, field.type === "number" ? Number(event.target.value) : event.target.value)} />}
         </Field>)}
