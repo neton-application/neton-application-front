@@ -15,7 +15,7 @@
  */
 
 import * as React from "react";
-import { resolveInitialLocale } from "./locale-resolution";
+import { matchLocale, resolveInitialLocale } from "./locale-resolution";
 import { setFormatLocale } from "./types";
 
 export type Messages = Record<string, string>;
@@ -112,7 +112,7 @@ export function I18nProvider({
 }) {
   // 首帧：服务端/客户端都先落在后台站点语言上（无效值回退默认），挂载后再叠加个人偏好与浏览器协商。
   const [locale, setLocaleState] = React.useState(
-    () => (siteLocale && config.locales.includes(siteLocale) ? siteLocale : config.defaultLocale),
+    () => matchLocale(userLocale ?? undefined, config.locales) ?? matchLocale(siteLocale, config.locales) ?? config.defaultLocale,
   );
   const manual = React.useRef<string | undefined>(undefined);
   const previousUser = React.useRef(userLocale);

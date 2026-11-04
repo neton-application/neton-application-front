@@ -2,6 +2,29 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createAdminLocalePreferences, PROFILE_UPDATE } from "../apps/shell/src/lib/locale-preference-store.ts";
 
+test("admin focus revalidation waits for an in-flight save rather than invalidating its success", async () => {
+  let locale = "en-US";
+  let finish!: () => void;
+  let started!: () => void;
+  const updating = new Promise<void>((resolve) => { started = resolve; });
+  const preferences = createAdminLocalePreferences(async (path) => {
+    if (path === PROFILE_UPDATE) {
+      started();
+      await new Promise<void>((resolve) => { finish = resolve; });
+      locale = "zh-CN";
+      return { code: 0 };
+    }
+    return { code: 0, data: { id: 42, locale } };
+  });
+  await preferences.load();
+  const save = preferences.save("zh-CN");
+  await updating;
+  const load = preferences.load();
+  finish();
+  await save;
+  assert.equal(await load, "zh-CN");
+});
+
 test("admin preferences use their own profile domain and carry an interaction precondition", async () => {
   const writes: RequestInit[] = [];
   const preferences = createAdminLocalePreferences(async (path, init) => {

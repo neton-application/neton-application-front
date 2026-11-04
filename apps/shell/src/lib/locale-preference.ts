@@ -32,6 +32,7 @@ async function request(path: string, init?: RequestInit): Promise<Envelope<Profi
         ...Object.fromEntries(new Headers(init?.headers)),
       },
       cache: "no-store",
+      signal: init?.signal ?? AbortSignal.timeout(10_000),
     });
     if (res.status === 401) return { code: 401 };
     if (!res.ok) return null;
@@ -47,4 +48,9 @@ export const loadUserLocale = preferences.load;
 export const localeSubject = preferences.currentSubject;
 
 /** Anonymous choice stays local; a signed-in save failure must never be reported as synchronized. */
-export const saveUserLocale = preferences.save;
+export function saveUserLocale(locale: string): Promise<void> {
+  return preferences.save(locale).catch((error) => {
+    if (error instanceof DOMException && error.message === "SUBJECT_CHANGED") window.location.reload();
+    throw error;
+  });
+}

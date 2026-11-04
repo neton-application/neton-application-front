@@ -1,6 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resolveInitialLocale } from "./locale-resolution.ts";
+import { matchLocale, resolveInitialLocale } from "./locale-resolution.ts";
+
+test("malformed optional candidates do not crash valid language matching", () => {
+  assert.equal(matchLocale("en-GB", ["not_a_valid_locale", "en-US"]), "en-US");
+  assert.equal(matchLocale("en;q=0.8", ["en-US"]), undefined);
+});
 
 // Shared golden vectors with the server-side UserLanguageTest (contract/core).
 // Explicit script (Hans/Hant) must beat region inference, and swapping the

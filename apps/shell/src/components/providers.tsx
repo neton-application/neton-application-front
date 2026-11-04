@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { usePathname } from "next/navigation";
 import { KitLabelsProvider, type KitLabels } from "@neton/application-front-kit";
 import { loadSitePublic } from "@neton/application-front-runtime/brand";
 import { I18nProvider, i18nConfigFromEnv, useFormat, useT } from "@neton/application-front-runtime/i18n";
@@ -19,7 +18,6 @@ const catalogs = { ...runtimeCatalogs, ...shellCatalogs };
  */
 export function Providers({ children }: { children: React.ReactNode }) {
   const [siteLocale, setSiteLocale] = React.useState<string | undefined>(undefined);
-  const pathname = usePathname();
   const [subject, setSubject] = React.useState<string | undefined>(undefined);
   const [refresh, recheck] = React.useReducer((n) => n + 1, 0);
   const [userLocale, setUserLocale] = React.useState<string | null | undefined>(undefined);
@@ -34,17 +32,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
       if (value && config.locales.includes(value)) setSiteLocale(value);
     });
     let active = true;
-    setUserLocale(null);
     loadUserLocale().then((value) => {
       if (!active) return;
       setSubject(localeSubject());
       // undefined is anonymous; null is an authenticated subject without a preference.
       setUserLocale(value);
-    }).catch((error) => {
-      if (active && !(error instanceof DOMException && error.name === "AbortError")) setUserLocale(null);
-    });
+    }).catch(() => { /* transient failure must not clear the last known preference */ });
     return () => { active = false; };
-  }, [pathname, refresh]);
+  }, [refresh]);
   return (
     <I18nProvider key={subject ?? "anonymous"} config={config} registry={localeRegistry} catalogs={catalogs} siteLocale={siteLocale} userLocale={userLocale}>
       <KitLabelsBridge>{children}</KitLabelsBridge>

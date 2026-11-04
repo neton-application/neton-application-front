@@ -5,7 +5,9 @@ export function matchLocale(preference: string | undefined, locales: string[]): 
   if (!preference) return undefined;
   let tag: Intl.Locale;
   try { tag = new Intl.Locale(preference.replaceAll("_", "-")); } catch { return undefined; }
-  const candidates = locales.map((value) => ({ value, tag: new Intl.Locale(value) }));
+  const candidates = locales.flatMap((value) => {
+    try { return [{ value, tag: new Intl.Locale(value) }]; } catch { return []; }
+  });
   const exact = candidates.find((c) => c.tag.toString() === tag.toString());
   if (exact) return exact.value;
   if (tag.language === "zh") {

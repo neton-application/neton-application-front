@@ -9,9 +9,11 @@ const superseded = () => new DOMException("SUPERSEDED", "AbortError");
 export function createAdminLocalePreferences(request: Request) {
   let generation = 0;
   let subject: string | undefined;
+  let saving: Promise<void> | undefined;
   return {
     currentSubject: () => subject,
     async load(): Promise<string | null | undefined> {
+      while (saving) await saving.catch(() => {});
       const mine = ++generation;
       const body = await request(PROFILE_GET);
       if (mine !== generation) throw superseded();
@@ -21,21 +23,25 @@ export function createAdminLocalePreferences(request: Request) {
       return body.data.locale?.trim() || null;
     },
     async save(locale: string) {
-      const mine = ++generation; // prevents an older load from undoing this choice
-      const expected = subject;
-      const session = await request(PROFILE_GET);
-      if (mine !== generation) throw superseded();
-      if (session?.code === 401 && expected === undefined) return; // anonymous choice
-      if (session?.code !== 0 || !session.data) throw new Error("LOCALE_SAVE_FAILED");
-      const id = String(session.data.id);
-      if (expected !== undefined && id !== expected) throw superseded();
-      const body = await request(PROFILE_UPDATE, {
-        method: "PUT", body: JSON.stringify({ locale }),
-        headers: { "X-Neton-Preference-Subject": id },
-      });
-      if (mine !== generation || body?.code === 10205) throw superseded();
-      if (body?.code !== 0) throw new Error("LOCALE_SAVE_FAILED");
-      subject = id;
+      const operation = (async () => {
+        const mine = ++generation; // prevents an older load from undoing this choice
+        const expected = subject;
+        const session = await request(PROFILE_GET);
+        if (mine !== generation) throw superseded();
+        if (session?.code === 401 && expected === undefined) return; // anonymous choice
+        if (session?.code !== 0 || !session.data) throw new Error("LOCALE_SAVE_FAILED");
+        const id = String(session.data.id);
+        if (expected !== undefined && id !== expected) throw new DOMException("SUBJECT_CHANGED", "AbortError");
+        const body = await request(PROFILE_UPDATE, {
+          method: "PUT", body: JSON.stringify({ locale }),
+          headers: { "X-Neton-Preference-Subject": id },
+        });
+        if (mine !== generation || body?.code === 10205) throw superseded();
+        if (body?.code !== 0) throw new Error("LOCALE_SAVE_FAILED");
+        subject = id;
+      })();
+      saving = operation;
+      try { await operation; } finally { if (saving === operation) saving = undefined; }
     },
   };
 }
