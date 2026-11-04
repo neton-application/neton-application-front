@@ -1,19 +1,52 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
 import { KitLabelsProvider, type KitLabels } from "@neton/application-front-kit";
+import { loadSitePublic } from "@neton/application-front-runtime/brand";
 import { I18nProvider, i18nConfigFromEnv, useFormat, useT } from "@neton/application-front-runtime/i18n";
 import { runtimeCatalogs } from "@neton/application-front-runtime/messages";
 import { localeRegistry } from "@/generated/modules.generated";
 import { shellCatalogs } from "@/messages";
+import { loadUserLocale, localeSubject } from "@/lib/locale-preference";
 
 const config = i18nConfigFromEnv();
 const catalogs = { ...runtimeCatalogs, ...shellCatalogs };
 
-/** 根部的客户端 Provider：国际化（宿主 / 运行时词条静态打入，模块词条随模块懒加载）。 */
+/**
+ * 根部的客户端 Provider：国际化（宿主 / 运行时词条静态打入，模块词条随模块懒加 载）。
+ * 登录账号以本人 system_users.locale 为准，无偏好回站点默认；匿名使用手选 > 浏览器语言 > 站点默认。
+ */
 export function Providers({ children }: { children: React.ReactNode }) {
+  const [siteLocale, setSiteLocale] = React.useState<string | undefined>(undefined);
+  const pathname = usePathname();
+  const [subject, setSubject] = React.useState<string | undefined>(undefined);
+  const [refresh, recheck] = React.useReducer((n) => n + 1, 0);
+  const [userLocale, setUserLocale] = React.useState<string | null | undefined>(undefined);
+  React.useEffect(() => {
+    const focused = () => recheck();
+    window.addEventListener("focus", focused);
+    return () => window.removeEventListener("focus", focused);
+  }, []);
+  React.useEffect(() => {
+    loadSitePublic().then((data) => {
+      const value = data.locale?.trim();
+      if (value && config.locales.includes(value)) setSiteLocale(value);
+    });
+    let active = true;
+    setUserLocale(null);
+    loadUserLocale().then((value) => {
+      if (!active) return;
+      setSubject(localeSubject());
+      // undefined is anonymous; null is an authenticated subject without a preference.
+      setUserLocale(value);
+    }).catch((error) => {
+      if (active && !(error instanceof DOMException && error.name === "AbortError")) setUserLocale(null);
+    });
+    return () => { active = false; };
+  }, [pathname, refresh]);
   return (
-    <I18nProvider config={config} registry={localeRegistry} catalogs={catalogs}>
+    <I18nProvider key={subject ?? "anonymous"} config={config} registry={localeRegistry} catalogs={catalogs} siteLocale={siteLocale} userLocale={userLocale}>
       <KitLabelsBridge>{children}</KitLabelsBridge>
     </I18nProvider>
   );

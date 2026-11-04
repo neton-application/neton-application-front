@@ -33,7 +33,7 @@ export function buildBrand(): Brand {
   };
 }
 
-interface SitePublic { name?: string; tagline?: string; captcha?: unknown }
+interface SitePublic { name?: string; tagline?: string; captcha?: unknown; locale?: string }
 
 let sitePublic: Promise<SitePublic> | null = null;
 

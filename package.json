@@ -7,9 +7,11 @@
     "typecheck": "pnpm registry && pnpm check:locales && pnpm --filter @neton/application-front-shell typecheck",
     "registry": "tsx scripts/generate-registry.mts",
     "check:locales": "tsx scripts/check-locales.mts",
-    "test": "pnpm --filter @neton/application-front-runtime --filter @neton/application-front-workspace test"
+    "test": "tsx --test \"scripts/**/*.test.mts\" && pnpm --filter @neton/application-front-runtime --filter @neton/application-front-workspace test",
+    "e2e:i18n": "tsx e2e/i18n.mts"
   },
   "devDependencies": {
+    "playwright": "1.64.1",
     "tsx": "^4.23.15",
     "turbo": "^2.11.8",
     "typescript": "^7.0.2"

@@ -58,6 +58,12 @@ jobs:
       - name: Production build
         run: pnpm build
 
+      - name: Install Chromium for i18n acceptance
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Headless i18n acceptance (mock HTTP boundary)
+        run: pnpm e2e:i18n
+
       - name: Audit production dependencies
         run: pnpm audit --prod --audit-level high
 
