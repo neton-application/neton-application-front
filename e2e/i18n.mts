@@ -47,7 +47,9 @@ try {
     }
     return respond({ code: 0, data: { enabled: false } });
   });
+  const hydrated = page.waitForResponse((r) => r.url().endsWith("/profile/get"));
   await page.goto(`${origin}/login`);
+  await hydrated;
   const language = page.getByRole("combobox");
   await language.selectOption("en-US");
   await page.waitForFunction(() => document.documentElement.lang === "en-US");
