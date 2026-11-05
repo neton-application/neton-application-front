@@ -101,7 +101,10 @@ function renderCell(field: ResourceField, row: ResourceRecord, t: Translate) {
   // 金额是最小货币单位（分）；记录上带了币种字段就用它，否则用部署默认币种。
   if (field.format === "money") return <span className="tabular-nums">{formatMoney(value as number, typeof row.currency === "string" ? row.currency : undefined)}</span>;
   if (field.format === "mono") return <code className="text-xs">{String(value ?? "-")}</code>;
-  return value === null || value === undefined || value === "" ? <span className="text-[var(--muted-foreground)]">-</span> : String(value);
+  if (value === null || value === undefined || value === "") return <span className="text-[var(--muted-foreground)]">-</span>;
+  // 多行文本（模型清单、备注等）在表格里最多两行，完整内容悬停看：一长串逗号分隔的值会把整行撑到一屏高
+  if (field.type === "textarea") return <span className="line-clamp-2 min-w-[12rem] max-w-[22rem] break-words" title={String(value)}>{String(value)}</span>;
+  return String(value);
 }
 
 export function ResourcePage({ config }: { config: ResourcePageConfig }) {

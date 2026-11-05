@@ -53,3 +53,28 @@ test("a store without a prefix behaves exactly as before", () => {
   assert.equal(store.hrefOf("/user/1"), "/user/1");
   store.stop();
 });
+
+test("starting twice does not duplicate restored tabs (React strict mode runs effects twice)", () => {
+  const data = new Map<string, string>();
+  const g = globalThis as unknown as { localStorage?: Storage };
+  const saved = g.localStorage;
+  g.localStorage = {
+    getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => { data.set(k, v); },
+    removeItem: (k: string) => { data.delete(k); }, clear: () => data.clear(), key: () => null, length: 0,
+  } as Storage;
+  try {
+    const first = new WorkspaceStore({ pages, host: memoryHost("", "/account/profile").host, homeHref: "/", pinHome: true, persist: { scope: "t" } });
+    first.start();
+    first.open("/user/1");
+    first.stop();
+    // 刷新后的新页面：同一个 store 被 start 两次
+    const store = new WorkspaceStore({ pages, host: memoryHost("", "/user/1").host, homeHref: "/", pinHome: true, persist: { scope: "t" } });
+    store.start();
+    store.start();
+    const keys = store.getSnapshot().instances.map((i) => i.resourceKey);
+    assert.equal(keys.length, new Set(keys).size, `duplicate tabs: ${keys.join(", ")}`);
+    store.stop();
+  } finally {
+    g.localStorage = saved;
+  }
+});

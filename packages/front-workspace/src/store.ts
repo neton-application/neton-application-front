@@ -305,6 +305,9 @@ export class WorkspaceStore {
       const resolved = resolveRoute(this.options.pages, item.href);
       if (!resolved) continue;
       // 同一资源可以有多个页签：按持久化里的 instanceId 逐个恢复，不做归一。
+      // 但同一个 instanceId 只恢复一次：start() 可能被调用不止一次（React 严格模式下 effect 跑两遍、
+      // 组件重新挂载），每次都把持久化的页签再追加一遍，刷新一次页面标签栏就多出一整组重复页签。
+      if (item.instanceId && this.instances.some((i) => i.instanceId === item.instanceId)) continue;
       this.instances.push({
         instanceId: item.instanceId || nextInstanceId(),
         resourceKey: resolved.resourceKey,
